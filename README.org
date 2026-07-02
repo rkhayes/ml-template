@@ -1,0 +1,102 @@
+* Structure
+#+begin_src
+├── pyproject.toml         # Dependency and tool configuration
+├── config/                # Centralized hyperparameters and environment configurations
+│   └── default.yaml
+├── data/                  # Strictly data (excluded from Git)
+│   ├── raw/               # Immutable source data (original datasets)
+│   └── processed/         # Canonical features ready for training
+├── notebooks/             # Scratchpads and EDA (use numbering for execution order)
+│   ├── 01_eda.ipynb
+│   └── 02_prototype.ipynb
+├── src/                   # Reusable library code installed in editable mode
+│   ├── __init__.py
+│   ├── data_loader.py     # Ingestion and pipeline components
+│   ├── models.py          # Model definitions/architectures
+│   ├── engine.py          # Clean train, validate, and test loops
+│   └── utils/             # Monitoring, logging, and evaluation metrics
+├── scripts/               # Entry points / execution scripts that invoke src/
+│   ├── train.py
+│   └── evaluate.py
+└── storage/               # Heavy artifacts generated at runtime (excluded from Git)
+    ├── artifacts/         # Serialized models, scalers, tokenizers
+    ├── checkpoints/       # Intermediate training weights
+    ├── metrics/           # Local TensorBoard logs, JSON reports, or confusion matrices
+    └── mlruns/            # Local MLFlow directory generated at runtime
+#+end_src
+
+#+begin_quote
+This template does not contain directories that should be generated at runtime, e.g. ~mlruns/~ and ~data/~.
+#+end_quote
+
+* Best practices
+** Decouple Configuration from Code
+Avoid hardcoding parameters inside ~src/models~ or ~src/scripts~. Introducing a ~config/~ directory allows your team to pass parameters cleanly via command-line arguments or config files, ensuring that running a new experiment never requires modifying actual source files.
+
+** Separate ~src/~ (Logic) from ~scripts/~ (Execution)
+Keep ~src/~ completely deterministic and free of side-effects.
+- ~src/~ contains the raw blueprints (the model class, the dataset class, the training metric calculator).
+- ~scripts/~ contains the actual execution commands that parse args, load data, run the training loops, and save to your storage paths.
+
+** Putting MLFlow ~mlruns~ directory under storage
+Enforce this at the environment level before running your script (or define it in an ~.env~ file) with:
+#+begin_src bash
+export MLFLOW_TRACKING_URI="file:./storage/mlruns"
+#+end_src
+
+* Using ~default.yaml~
+Writing model parameters:
+#+begin_src yaml
+experiment:
+  name: "unet_efficientnet_pipeline"
+  seed: 42
+  tracking_uri: "file:./storage/mlruns"
+
+data:
+  image_size: [256, 256]
+  batch_size: 16
+  num_workers: 4
+  # Paths are relative to the project root
+  train_dir: "data/processed/train"
+  val_dir: "data/processed/val"
+
+model:
+  architecture: "unet"
+  backbone: "efficientnet-b4"
+  pretrained: true
+  in_channels: 3
+  # Head configurations for different tasks in the pipeline
+  heads:
+    segmentation_classes: 1
+    classification_classes: 4
+
+training:
+  epochs: 50
+  learning_rate: 0.001
+  optimizer: "adamw"
+  weight_decay: 1e-4
+  patience: 10
+  mixed_precision: true
+
+augmentation:
+  horizontal_flip_prob: 0.5
+  vertical_flip_prob: 0.5
+  random_rotation_degrees: 15
+#+end_src
+
+Reading model parameters:
+#+begin_src python
+import yaml
+from pathlib import Path
+
+def load_config(config_path="config/default.yaml"):
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
+if __name__ == "__main__":
+    config = load_config()
+
+    # Accessing the parameters
+    print(f"Loading {config['model']['backbone']} backbone...")
+    print(f"Tracking run to: {config['experiment']['tracking_uri']}")
+#+end_src
