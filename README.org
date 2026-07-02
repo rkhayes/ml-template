@@ -1,4 +1,5 @@
-* Structure
+* ML Template
+** Structure
 #+begin_src
 ├── pyproject.toml         # Dependency and tool configuration
 ├── config/                # Centralized hyperparameters and environment configurations
@@ -29,22 +30,22 @@
 This template does not contain directories that should be generated at runtime, e.g. ~mlruns/~ and ~data/~.
 #+end_quote
 
-* Best practices
-** Decouple Configuration from Code
+** Best practices
+*** Decouple Configuration from Code
 Avoid hardcoding parameters inside ~src/models~ or ~src/scripts~. Introducing a ~config/~ directory allows your team to pass parameters cleanly via command-line arguments or config files, ensuring that running a new experiment never requires modifying actual source files.
 
-** Separate ~src/~ (Logic) from ~scripts/~ (Execution)
+*** Separate ~src/~ (Logic) from ~scripts/~ (Execution)
 Keep ~src/~ completely deterministic and free of side-effects.
 - ~src/~ contains the raw blueprints (the model class, the dataset class, the training metric calculator).
 - ~scripts/~ contains the actual execution commands that parse args, load data, run the training loops, and save to your storage paths.
 
-** Putting MLFlow ~mlruns~ directory under storage
+*** Putting MLFlow ~mlruns~ directory under storage
 Enforce this at the environment level before running your script (or define it in an ~.env~ file) with:
 #+begin_src bash
 export MLFLOW_TRACKING_URI="file:./storage/mlruns"
 #+end_src
 
-* Using ~default.yaml~
+** Using ~default.yaml~
 Writing model parameters:
 #+begin_src yaml
 experiment:
